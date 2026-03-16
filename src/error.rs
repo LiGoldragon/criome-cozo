@@ -1,36 +1,43 @@
 use std::fmt;
 
-/// Errors produced by criome-cozo operations.
+/// Errors produced by database operations.
 #[derive(Debug)]
-pub enum CozoError {
+pub enum Error {
     /// A CozoScript source failed to parse.
-    ScriptParse(String),
+    ScriptParse { source: String },
     /// A query executed but returned an error.
-    QueryFailed(String),
+    QueryFailed { detail: String },
     /// A referenced relation does not exist.
-    RelationNotFound(String),
+    RelationNotFound { name: String },
     /// Database initialisation failed.
-    InitFailed(String),
+    InitFailed { reason: String },
 }
 
-impl fmt::Display for CozoError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CozoError::ScriptParse(msg) => write!(f, "script parse error: {msg}"),
-            CozoError::QueryFailed(msg) => write!(f, "query failed: {msg}"),
-            CozoError::RelationNotFound(name) => write!(f, "relation not found: {name}"),
-            CozoError::InitFailed(msg) => write!(f, "db init failed: {msg}"),
+            Error::ScriptParse { source } => {
+                write!(f, "script parse error: {source}")
+            }
+            Error::QueryFailed { detail } => {
+                write!(f, "query failed: {detail}")
+            }
+            Error::RelationNotFound { name } => {
+                write!(f, "relation not found: {name}")
+            }
+            Error::InitFailed { reason } => {
+                write!(f, "db init failed: {reason}")
+            }
         }
     }
 }
 
-impl std::error::Error for CozoError {}
+impl std::error::Error for Error {}
 
-// TODO: Verify the concrete error type exposed by cozo 0.7.
-// `cozo::DbInstance` methods return `miette::Result<NamedRows>`, so the
-// error type is `miette::Report`.  We convert via Display.
-impl From<miette::Report> for CozoError {
+impl From<miette::Report> for Error {
     fn from(err: miette::Report) -> Self {
-        CozoError::QueryFailed(err.to_string())
+        Error::QueryFailed {
+            detail: err.to_string(),
+        }
     }
 }

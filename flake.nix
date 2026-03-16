@@ -11,25 +11,32 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-utils, crane, fenix, ... }:
+  outputs = { self, nixpkgs, flake-utils, crane, fenix, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
         rustToolchain = fenix.packages.${system}.latest.toolchain;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
         src = craneLib.cleanCargoSource ./.;
-      in
-      {
-        packages.default = craneLib.buildPackage {
+        commonArgs = {
           inherit src;
           pname = "criome-cozo";
           cargoExtraArgs = "--lib";
         };
+        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+      in
+      {
+        packages.default = craneLib.buildPackage (commonArgs // {
+          inherit cargoArtifacts;
+        });
 
-        checks.default = craneLib.buildPackage {
-          inherit src;
-          pname = "criome-cozo";
-          cargoExtraArgs = "--lib";
+        checks = {
+          build = craneLib.buildPackage (commonArgs // {
+            inherit cargoArtifacts;
+          });
+          tests = craneLib.cargoTest (commonArgs // {
+            inherit cargoArtifacts;
+          });
         };
 
         devShells.default = craneLib.devShell {

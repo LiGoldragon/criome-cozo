@@ -159,7 +159,7 @@ fn format_value(v: &DataValue) -> String {
         DataValue::Null => "null".into(),
         DataValue::Bool(b) => b.to_string(),
         DataValue::Num(n) => format!("{n}"),
-        DataValue::Str(s) => format!("\"{s}\""),
+        DataValue::Str(s) => s.to_string(),
         DataValue::List(l) => {
             let inner: Vec<String> = l.iter().map(format_value).collect();
             format!("[{}]", inner.join(", "))

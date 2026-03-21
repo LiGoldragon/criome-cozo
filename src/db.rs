@@ -161,7 +161,8 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
         return out;
     }
 
-    // Pretty: same cozo tuples but with column-aligned padding
+    // Pretty: cozo tuples with comma-hugging alignment
+    // Padding goes after the comma, before the next value
     let mut widths: Vec<usize> = named.headers.iter().map(|h| h.len()).collect();
     for row in &cells {
         for (i, cell) in row.iter().enumerate() {
@@ -171,15 +172,19 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
         }
     }
 
+    let last = widths.len().saturating_sub(1);
     let mut out = String::new();
 
     // Header
     out.push('[');
     for (i, h) in named.headers.iter().enumerate() {
-        if i > 0 {
-            out.push_str(", ");
+        out.push_str(h);
+        if i < last {
+            out.push(',');
+            // pad to align next column
+            let pad = widths[i] - h.len() + 1;
+            out.extend(std::iter::repeat_n(' ', pad));
         }
-        out.push_str(&format!("{:width$}", h, width = widths[i]));
     }
     out.push_str("]\n");
 
@@ -187,10 +192,12 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
     for row in &cells {
         out.push('[');
         for (i, cell) in row.iter().enumerate() {
-            if i > 0 {
-                out.push_str(", ");
+            out.push_str(cell);
+            if i < last {
+                out.push(',');
+                let pad = widths[i] - cell.len() + 1;
+                out.extend(std::iter::repeat_n(' ', pad));
             }
-            out.push_str(&format!("{:width$}", cell, width = widths[i]));
         }
         out.push_str("]\n");
     }

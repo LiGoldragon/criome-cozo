@@ -102,15 +102,13 @@ impl CriomeDb {
             })
     }
 
-    /// Execute a CozoScript statement and return formatted CozoScript text.
-    /// When `pretty` is true, columns are padded for human readability.
+    /// Execute a CozoScript statement and return formatted CozoScript tuples.
     pub fn run_script_cozo(
         &self,
         script: &str,
-        pretty: bool,
     ) -> Result<String, Error> {
         let rows = self.run_script_raw(script)?;
-        Ok(format_rows(&rows, pretty))
+        Ok(format_rows(&rows))
     }
 
     /// Simple health check — runs a trivial query and returns `true`
@@ -135,10 +133,8 @@ fn format_value(v: &DataValue) -> String {
     }
 }
 
-/// Render NamedRows as compact CozoScript tuples — no padding, no fences.
-/// The `pretty` flag is accepted but ignored; Claude CLI mangles any
-/// whitespace or bracket formatting, so compact is the only viable output.
-pub fn format_rows(named: &NamedRows, _pretty: bool) -> String {
+/// Render NamedRows as compact CozoScript tuples.
+pub fn format_rows(named: &NamedRows) -> String {
     if named.headers.is_empty() {
         return String::new();
     }

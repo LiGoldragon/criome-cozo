@@ -135,36 +135,53 @@ fn format_value(v: &DataValue) -> String {
     }
 }
 
-/// Render NamedRows as CozoScript — header line + one tuple per row.
-/// When `pretty` is true, values are padded to align columns.
+/// Format a DataValue as a plain string (no quotes) for table display.
+fn format_value_plain(v: &DataValue) -> String {
+    match v {
+        DataValue::Null => "null".into(),
+        DataValue::Bool(b) => b.to_string(),
+        DataValue::Num(n) => format!("{n}"),
+        DataValue::Str(s) => s.to_string(),
+        DataValue::List(l) => {
+            let inner: Vec<String> = l.iter().map(format_value_plain).collect();
+            format!("[{}]", inner.join(", "))
+        }
+        _ => format!("{v:?}"),
+    }
+}
+
+/// Render NamedRows. `pretty=true` → aligned table. `pretty=false` → cozo tuples.
 pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
     if named.headers.is_empty() {
         return String::new();
     }
 
-    // Format all cells first
-    let cells: Vec<Vec<String>> = named
-        .rows
-        .iter()
-        .map(|row| row.iter().map(format_value).collect())
-        .collect();
-
     if !pretty {
+        // Raw cozo tuples — one per line
         let mut out = String::new();
-        // Header
         out.push('[');
         out.push_str(&named.headers.join(","));
         out.push_str("]\n");
-        // Rows
-        for row in &cells {
+        for row in &named.rows {
             out.push('[');
-            out.push_str(&row.join(","));
+            for (i, v) in row.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str(&format_value(v));
+            }
             out.push_str("]\n");
         }
         return out;
     }
 
-    // Compute column widths for pretty mode
+    // Pretty: plain text table with pipe separators
+    let cells: Vec<Vec<String>> = named
+        .rows
+        .iter()
+        .map(|row| row.iter().map(format_value_plain).collect())
+        .collect();
+
     let mut widths: Vec<usize> = named.headers.iter().map(|h| h.len()).collect();
     for row in &cells {
         for (i, cell) in row.iter().enumerate() {
@@ -177,25 +194,33 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
     let mut out = String::new();
 
     // Header
-    out.push('[');
     for (i, h) in named.headers.iter().enumerate() {
         if i > 0 {
-            out.push_str(", ");
+            out.push_str(" | ");
         }
         out.push_str(&format!("{:width$}", h, width = widths[i]));
     }
-    out.push_str("]\n");
+    out.push('\n');
+
+    // Separator
+    for (i, w) in widths.iter().enumerate() {
+        if i > 0 {
+            out.push_str("-+-");
+        }
+        out.extend(std::iter::repeat_n('-', *w));
+    }
+    out.push('\n');
 
     // Rows
     for row in &cells {
-        out.push('[');
         for (i, cell) in row.iter().enumerate() {
             if i > 0 {
-                out.push_str(", ");
+                out.push_str(" | ");
             }
-            out.push_str(&format!("{:width$}", cell, width = widths[i]));
+            let w = widths.get(i).copied().unwrap_or(0);
+            out.push_str(&format!("{:width$}", cell, width = w));
         }
-        out.push_str("]\n");
+        out.push('\n');
     }
 
     out

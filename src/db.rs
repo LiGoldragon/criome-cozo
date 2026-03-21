@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use cozo_ce::{DataValue, DbInstance, ScriptMutability};
+use cozo_ce::{DataValue, DbInstance, NamedRows, ScriptMutability};
 
 use crate::error::Error;
 use crate::script::Script;
@@ -89,9 +89,114 @@ impl CriomeDb {
         Ok(last_result)
     }
 
+    /// Execute a CozoScript statement and return raw NamedRows.
+    pub fn run_script_raw(
+        &self,
+        script: &str,
+    ) -> Result<NamedRows, Error> {
+        let params: BTreeMap<String, DataValue> = BTreeMap::new();
+        self.inner
+            .run_script(script, params, ScriptMutability::Mutable)
+            .map_err(|e| Error::QueryFailed {
+                detail: e.to_string(),
+            })
+    }
+
+    /// Execute a CozoScript statement and return formatted CozoScript text.
+    /// When `pretty` is true, columns are padded for human readability.
+    pub fn run_script_cozo(
+        &self,
+        script: &str,
+        pretty: bool,
+    ) -> Result<String, Error> {
+        let rows = self.run_script_raw(script)?;
+        Ok(format_rows(&rows, pretty))
+    }
+
     /// Simple health check — runs a trivial query and returns `true`
     /// on success.
     pub fn is_live(&self) -> bool {
         self.run_script("?[] <- [[true]]").is_ok()
     }
+}
+
+/// Format a DataValue as a CozoScript literal.
+fn format_value(v: &DataValue) -> String {
+    match v {
+        DataValue::Null => "null".into(),
+        DataValue::Bool(b) => b.to_string(),
+        DataValue::Num(n) => format!("{n}"),
+        DataValue::Str(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
+        DataValue::List(l) => {
+            let inner: Vec<String> = l.iter().map(format_value).collect();
+            format!("[{}]", inner.join(", "))
+        }
+        _ => format!("{v:?}"),
+    }
+}
+
+/// Render NamedRows as CozoScript — header line + one tuple per row.
+/// When `pretty` is true, values are padded to align columns.
+pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
+    if named.headers.is_empty() {
+        return String::new();
+    }
+
+    // Format all cells first
+    let cells: Vec<Vec<String>> = named
+        .rows
+        .iter()
+        .map(|row| row.iter().map(format_value).collect())
+        .collect();
+
+    if !pretty {
+        let mut out = String::new();
+        // Header
+        out.push('[');
+        out.push_str(&named.headers.join(","));
+        out.push_str("]\n");
+        // Rows
+        for row in &cells {
+            out.push('[');
+            out.push_str(&row.join(","));
+            out.push_str("]\n");
+        }
+        return out;
+    }
+
+    // Compute column widths for pretty mode
+    let mut widths: Vec<usize> = named.headers.iter().map(|h| h.len()).collect();
+    for row in &cells {
+        for (i, cell) in row.iter().enumerate() {
+            if i < widths.len() && cell.len() > widths[i] {
+                widths[i] = cell.len();
+            }
+        }
+    }
+
+    let mut out = String::new();
+
+    // Header
+    out.push('[');
+    for (i, h) in named.headers.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!("{:width$}", h, width = widths[i]));
+    }
+    out.push_str("]\n");
+
+    // Rows
+    for row in &cells {
+        out.push('[');
+        for (i, cell) in row.iter().enumerate() {
+            if i > 0 {
+                out.push_str(", ");
+            }
+            out.push_str(&format!("{:width$}", cell, width = widths[i]));
+        }
+        out.push_str("]\n");
+    }
+
+    out
 }

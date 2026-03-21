@@ -135,74 +135,27 @@ fn format_value(v: &DataValue) -> String {
     }
 }
 
-/// Render NamedRows as CozoScript tuples inside a code fence.
-/// `pretty=true` pads columns for alignment. Code fence prevents
-/// Claude CLI from parsing `[...]` as JSON arrays.
-pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
+/// Render NamedRows as compact CozoScript tuples — no padding, no fences.
+/// The `pretty` flag is accepted but ignored; Claude CLI mangles any
+/// whitespace or bracket formatting, so compact is the only viable output.
+pub fn format_rows(named: &NamedRows, _pretty: bool) -> String {
     if named.headers.is_empty() {
         return String::new();
     }
 
-    // Format all cells as CozoScript values
-    let cells: Vec<Vec<String>> = named
-        .rows
-        .iter()
-        .map(|row| row.iter().map(format_value).collect())
-        .collect();
-
-    let mut out = String::from("```cozo\n");
-
-    if !pretty {
-        out.push('[');
-        out.push_str(&named.headers.join(","));
-        out.push_str("]\n");
-        for row in &cells {
-            out.push('[');
-            out.push_str(&row.join(","));
-            out.push_str("]\n");
-        }
-        out.push_str("```");
-        return out;
-    }
-
-    // Pretty: cozo tuples with comma-hugging alignment
-    let mut widths: Vec<usize> = named.headers.iter().map(|h| h.len()).collect();
-    for row in &cells {
-        for (i, cell) in row.iter().enumerate() {
-            if i < widths.len() && cell.len() > widths[i] {
-                widths[i] = cell.len();
-            }
-        }
-    }
-
-    let last = widths.len().saturating_sub(1);
-
-    // Header
+    let mut out = String::new();
     out.push('[');
-    for (i, h) in named.headers.iter().enumerate() {
-        out.push_str(h);
-        if i < last {
-            out.push(',');
-            let pad = widths[i] - h.len() + 1;
-            out.extend(std::iter::repeat_n(' ', pad));
-        }
-    }
+    out.push_str(&named.headers.join(","));
     out.push_str("]\n");
-
-    // Rows
-    for row in &cells {
+    for row in &named.rows {
         out.push('[');
-        for (i, cell) in row.iter().enumerate() {
-            out.push_str(cell);
-            if i < last {
+        for (i, v) in row.iter().enumerate() {
+            if i > 0 {
                 out.push(',');
-                let pad = widths[i] - cell.len() + 1;
-                out.extend(std::iter::repeat_n(' ', pad));
             }
+            out.push_str(&format_value(v));
         }
         out.push_str("]\n");
     }
-
-    out.push_str("```");
     out
 }

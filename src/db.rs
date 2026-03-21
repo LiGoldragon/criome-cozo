@@ -135,7 +135,9 @@ fn format_value(v: &DataValue) -> String {
     }
 }
 
-/// Render NamedRows as CozoScript tuples. `pretty=true` pads columns for alignment.
+/// Render NamedRows as CozoScript tuples inside a code fence.
+/// `pretty=true` pads columns for alignment. Code fence prevents
+/// Claude CLI from parsing `[...]` as JSON arrays.
 pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
     if named.headers.is_empty() {
         return String::new();
@@ -148,8 +150,9 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
         .map(|row| row.iter().map(format_value).collect())
         .collect();
 
+    let mut out = String::from("```cozo\n");
+
     if !pretty {
-        let mut out = String::new();
         out.push('[');
         out.push_str(&named.headers.join(","));
         out.push_str("]\n");
@@ -158,11 +161,11 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
             out.push_str(&row.join(","));
             out.push_str("]\n");
         }
+        out.push_str("```");
         return out;
     }
 
     // Pretty: cozo tuples with comma-hugging alignment
-    // Padding goes after the comma, before the next value
     let mut widths: Vec<usize> = named.headers.iter().map(|h| h.len()).collect();
     for row in &cells {
         for (i, cell) in row.iter().enumerate() {
@@ -173,7 +176,6 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
     }
 
     let last = widths.len().saturating_sub(1);
-    let mut out = String::new();
 
     // Header
     out.push('[');
@@ -181,7 +183,6 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
         out.push_str(h);
         if i < last {
             out.push(',');
-            // pad to align next column
             let pad = widths[i] - h.len() + 1;
             out.extend(std::iter::repeat_n(' ', pad));
         }
@@ -202,5 +203,6 @@ pub fn format_rows(named: &NamedRows, pretty: bool) -> String {
         out.push_str("]\n");
     }
 
+    out.push_str("```");
     out
 }

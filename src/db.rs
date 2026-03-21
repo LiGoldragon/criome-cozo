@@ -89,12 +89,45 @@ impl CriomeDb {
         Ok(last_result)
     }
 
+    /// Execute a CozoScript statement with parameters and return the result as JSON.
+    pub fn run_script_with(
+        &self,
+        script: &str,
+        params: BTreeMap<String, DataValue>,
+    ) -> Result<serde_json::Value, Error> {
+        let named_rows = self
+            .inner
+            .run_script(script, params, ScriptMutability::Mutable)
+            .map_err(|e| Error::QueryFailed {
+                detail: e.to_string(),
+            })?;
+
+        serde_json::to_value(&named_rows).map_err(|e| {
+            Error::QueryFailed {
+                detail: format!("failed to serialise result: {e}"),
+            }
+        })
+    }
+
     /// Execute a CozoScript statement and return raw NamedRows.
     pub fn run_script_raw(
         &self,
         script: &str,
     ) -> Result<NamedRows, Error> {
         let params: BTreeMap<String, DataValue> = BTreeMap::new();
+        self.inner
+            .run_script(script, params, ScriptMutability::Mutable)
+            .map_err(|e| Error::QueryFailed {
+                detail: e.to_string(),
+            })
+    }
+
+    /// Execute a CozoScript statement with parameters and return raw NamedRows.
+    pub fn run_script_raw_with(
+        &self,
+        script: &str,
+        params: BTreeMap<String, DataValue>,
+    ) -> Result<NamedRows, Error> {
         self.inner
             .run_script(script, params, ScriptMutability::Mutable)
             .map_err(|e| Error::QueryFailed {

@@ -144,6 +144,48 @@ impl CriomeDb {
         Ok(format_rows(&rows))
     }
 
+    /// Execute a CozoScript statement in immutable mode (mutations rejected).
+    pub fn run_script_immutable(
+        &self,
+        script: &str,
+    ) -> Result<serde_json::Value, Error> {
+        let params: BTreeMap<String, DataValue> = BTreeMap::new();
+        let named_rows = self
+            .inner
+            .run_script(script, params, ScriptMutability::Immutable)
+            .map_err(|e| Error::QueryFailed {
+                detail: e.to_string(),
+            })?;
+
+        serde_json::to_value(&named_rows).map_err(|e| {
+            Error::QueryFailed {
+                detail: format!("failed to serialise result: {e}"),
+            }
+        })
+    }
+
+    /// Execute a CozoScript statement in immutable mode, returning CozoScript tuples.
+    pub fn run_script_cozo_immutable(
+        &self,
+        script: &str,
+    ) -> Result<String, Error> {
+        let rows = self.run_script_raw_immutable(script)?;
+        Ok(format_rows(&rows))
+    }
+
+    /// Execute a CozoScript statement in immutable mode, returning raw NamedRows.
+    pub fn run_script_raw_immutable(
+        &self,
+        script: &str,
+    ) -> Result<NamedRows, Error> {
+        let params: BTreeMap<String, DataValue> = BTreeMap::new();
+        self.inner
+            .run_script(script, params, ScriptMutability::Immutable)
+            .map_err(|e| Error::QueryFailed {
+                detail: e.to_string(),
+            })
+    }
+
     /// Simple health check — runs a trivial query and returns `true`
     /// on success.
     pub fn is_live(&self) -> bool {

@@ -151,15 +151,13 @@ impl CriomeDb {
     }
 }
 
-/// Format a DataValue for MCP output.
-/// Strings are quoted but not double-escaped — the MCP JSON-RPC
-/// transport handles JSON encoding, so we only need one layer.
+/// Format a DataValue as a CozoScript literal.
 fn format_value(v: &DataValue) -> String {
     match v {
         DataValue::Null => "null".into(),
         DataValue::Bool(b) => b.to_string(),
         DataValue::Num(n) => format!("{n}"),
-        DataValue::Str(s) => s.to_string(),
+        DataValue::Str(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
         DataValue::List(l) => {
             let inner: Vec<String> = l.iter().map(format_value).collect();
             format!("[{}]", inner.join(", "))

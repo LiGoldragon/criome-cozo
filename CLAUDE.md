@@ -11,3 +11,8 @@ execution, and multi-statement script splitting for `.cozo` files.
 - `db` — `CriomeDb` wrapper around `cozo::DbInstance` (memory and SQLite backends)
 - `error` — `CozoError` enum for all fallible operations
 - `script` — utilities for loading and splitting multi-statement `.cozo` files
+
+## VCS
+
+Jujutsu (`jj`) is mandatory. Git is the backend only. Always pass `-m` to
+`jj` commands.

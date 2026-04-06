@@ -1,18 +1,15 @@
-# criome-cozo
+# CLAUDE.md
 
-Shared CozoDB wrapper for Criome agents (Samskara, Lojix transpiler, and others).
-
-This crate provides DB primitives on top of the `cozo` crate using Sema-style
-conventions. It handles database lifecycle (open, health-check), CozoScript
-execution, and multi-statement script splitting for `.cozo` files.
-
-## Modules
-
-- `db` — `CriomeDb` wrapper around `cozo::DbInstance` (memory and SQLite backends)
-- `error` — `CozoError` enum for all fallible operations
-- `script` — utilities for loading and splitting multi-statement `.cozo` files
+criome-cozo — shared CozoDB wrapper for Criome agents. Thin wrapper around
+cozo-ce providing DB lifecycle, CozoScript execution, multi-statement script
+splitting, and immutable query variants. No business logic.
 
 ## VCS
 
 Jujutsu (`jj`) is mandatory. Git is the backend only. Always pass `-m` to
 `jj` commands.
+
+## Language Policy
+
+- **Rust** only for application logic.
+- **Nix** only for builds and dev shells.
